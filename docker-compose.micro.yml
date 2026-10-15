@@ -1,0 +1,173 @@
+# 面试加强版微服务：Gateway + Agent + Repo（不启单体 backend）
+# 用法: docker compose -f docker-compose.micro.yml up -d --build
+# 前端仍指向 http://localhost:8001
+
+services:
+  redis:
+    image: redis/redis-stack-server:latest
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data_micro:/data
+    environment:
+      REDIS_ARGS: "--appendonly yes"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-agent}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-agent_secret}
+      POSTGRES_DB: ${POSTGRES_DB:-github_agent}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data_micro:/var/lib/postgresql/data
+      - ./backend/scripts/init_db.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-agent} -d ${POSTGRES_DB:-github_agent}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  agent:
+    build:
+      context: .
+      dockerfile: Dockerfile.micro
+    command:
+      [
+        "uvicorn",
+        "services.agent_svc.main:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8011",
+        "--workers",
+        "1",
+      ]
+    env_file:
+      - .env
+    environment:
+      GATEWAY_MODE: micro
+      SERVICE_NAME: agent
+      SERVICE_ADVERTISE_URL: http://agent:8011
+      REDIS_URL: redis://redis:6379/1
+      REGISTRY_REDIS_URL: redis://redis:6379/0
+      REPO_RPC_ENABLED: "true"
+      REPO_RPC_URL: http://repo:8012
+      # 必填：至少 16 字符随机串；禁止 dev-internal-rpc 等弱默认
+      INTERNAL_RPC_TOKEN: ${INTERNAL_RPC_TOKEN:?Set INTERNAL_RPC_TOKEN to a strong secret (>=16 chars)}
+      CORS_ORIGINS: http://localhost:5173,http://localhost:3000,http://gateway:8001
+    ports:
+      - "8011:8011"
+    depends_on:
+      redis:
+        condition: service_healthy
+      repo:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8011/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  repo:
+    build:
+      context: .
+      dockerfile: Dockerfile.micro
+    command:
+      [
+        "uvicorn",
+        "services.repo_svc.main:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8012",
+        "--workers",
+        "1",
+      ]
+    env_file:
+      - .env
+    environment:
+      GATEWAY_MODE: micro
+      SERVICE_NAME: repo
+      SERVICE_ADVERTISE_URL: http://repo:8012
+      REDIS_URL: redis://redis:6379/0
+      REGISTRY_REDIS_URL: redis://redis:6379/0
+      REPO_RPC_ENABLED: "false"
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-agent}:${POSTGRES_PASSWORD:-agent_secret}@postgres:5432/${POSTGRES_DB:-github_agent}
+      INTERNAL_RPC_TOKEN: ${INTERNAL_RPC_TOKEN:?Set INTERNAL_RPC_TOKEN to a strong secret (>=16 chars)}
+      CORS_ORIGINS: http://localhost:5173,http://localhost:3000,http://gateway:8001
+    ports:
+      - "8012:8012"
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8012/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile.micro
+    command:
+      [
+        "uvicorn",
+        "services.gateway.main:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8001",
+        "--workers",
+        "1",
+      ]
+    env_file:
+      - .env
+    environment:
+      GATEWAY_MODE: micro
+      AGENT_SVC_URL: http://agent:8011
+      REPO_SVC_URL: http://repo:8012
+      REGISTRY_REDIS_URL: redis://redis:6379/0
+      REDIS_URL: redis://redis:6379/0
+      CORS_ORIGINS: http://localhost:5173,http://localhost:3000
+    ports:
+      - "8001:8001"
+    depends_on:
+      agent:
+        condition: service_healthy
+      repo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "5173:5173"
+    environment:
+      # 浏览器访问宿主机 Gateway
+      VITE_API_BASE: http://localhost:8001
+    depends_on:
+      gateway:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  redis_data_micro:
+  postgres_data_micro:

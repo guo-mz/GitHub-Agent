@@ -1,0 +1,46 @@
+# ===== 密钥与本地配置（禁止提交）=====
+.env
+.env.*
+!.env.example
+backend/.env
+frontend/.env
+*.pem
+*.key
+secrets/
+
+# ===== Python =====
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+build/
+.coverage
+htmlcov/
+
+# ===== 运行时数据 =====
+backend/.data/
+services/logs/
+*.log
+
+# ===== 前端 =====
+node_modules/
+frontend/dist/
+frontend/.vite/
+
+# ===== IDE / OS =====
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*~
+
+# ===== 本地生成物（可选保留源码脚本）=====
+# docs 下的生成脚本可提交；大型临时产物忽略
+**/__pycache__/

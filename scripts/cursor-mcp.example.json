@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "github-agent": {
+      "command": "D:/guome/Desktop/专高六2.0/gmz-gitHub/github-agent/backend/.venv/Scripts/python.exe",
+      "args": ["-m", "app.mcp_server"],
+      "cwd": "D:/guome/Desktop/专高六2.0/gmz-gitHub/github-agent/backend",
+      "env": {
+        "PYTHONPATH": "D:/guome/Desktop/专高六2.0/gmz-gitHub/github-agent/backend"
+      }
+    }
+  }
+}

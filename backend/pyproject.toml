@@ -1,0 +1,50 @@
+[project]
+name = "github-agent"
+version = "1.0.0"
+description = "Enterprise GitHub Intelligent R&D Assistant Agent"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi>=0.115.0,<0.116",
+  "uvicorn[standard]>=0.32.0,<0.33",
+  "pydantic>=2.9.0,<3",
+  "pydantic-settings>=2.6.0,<3",
+  "httpx>=0.27.0,<0.28",
+  "redis>=5.2.0,<6",
+  "asyncpg>=0.30.0,<0.31",
+  "sqlalchemy[asyncio]>=2.0.36,<2.1",
+  "pgvector>=0.3.6,<0.4",
+  "langchain>=0.3.7,<0.4",
+  "langchain-openai>=0.2.8,<0.3",
+  "langchain-community>=0.3.7,<0.4",
+  "langchain-core>=0.3.17,<0.4",
+  "langchain-text-splitters>=0.3.2,<0.4",
+  "langgraph>=0.2.50,<0.3",
+  "langgraph-checkpoint>=2.0.10,<3",
+  "langgraph-checkpoint-redis==0.0.8",
+  "langfuse>=2.54.0,<3",
+  "python-multipart>=0.0.12",
+  "itsdangerous>=2.2.0",
+  "tenacity>=9.0.0,<10",
+  "rank-bm25>=0.2.2",
+  "numpy>=1.26.0,<3",
+  "tiktoken>=0.8.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0.0,<9",
+]
+transformer = [
+  "sentence-transformers>=3.0.0,<4",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

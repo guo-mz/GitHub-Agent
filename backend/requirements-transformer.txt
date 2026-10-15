@@ -1,0 +1,3 @@
+# Optional: Transformer Cross-Encoder rerank for Hybrid RAG
+# pip install -r requirements-transformer.txt
+sentence-transformers>=3.0.0,<4
